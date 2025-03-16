@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QSplitter, QMessageBox,
-    QFileDialog, QPushButton
+    QFileDialog, QPushButton, QInputDialog
 )
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt
@@ -92,6 +92,10 @@ class MainWindow(QMainWindow):
         open_folder_action.triggered.connect(self._open_folder_dialog)
         file_menu.addAction(open_folder_action)
         
+        open_file_action = QAction("ファイルを開く", self)
+        open_file_action.triggered.connect(self._open_file_dialog)
+        file_menu.addAction(open_file_action)
+        
         file_menu.addSeparator()
         
         exit_action = QAction("終了", self)
@@ -118,6 +122,23 @@ class MainWindow(QMainWindow):
         rotate_ccw_action = QAction("反時計回りに回転", self)
         rotate_ccw_action.triggered.connect(self.image_view_model.rotate_counterclockwise)
         view_menu.addAction(rotate_ccw_action)
+        
+        # 任意角度回転のアクションを追加
+        rotate_angle_action = QAction("角度を指定して回転", self)
+        rotate_angle_action.triggered.connect(self._rotate_by_angle)
+        view_menu.addAction(rotate_angle_action)
+        
+        # 全画面表示のアクションを追加
+        fullscreen_action = QAction("全画面表示", self)
+        fullscreen_action.triggered.connect(self._toggle_fullscreen)
+        view_menu.addAction(fullscreen_action)
+        
+        # フィット表示のアクションを追加
+        fit_to_window_action = QAction("ウィンドウに合わせる", self)
+        fit_to_window_action.setCheckable(True)
+        fit_to_window_action.setChecked(True)
+        fit_to_window_action.triggered.connect(self._toggle_fit_to_window)
+        view_menu.addAction(fit_to_window_action)
         
         view_menu.addSeparator()
         
@@ -155,7 +176,6 @@ class MainWindow(QMainWindow):
         
         # ズームアウト
         zoom_out_action = QAction(QIcon.fromTheme("zoom-out"), "縮小", self)
-        zoom_out_action.triggered.connect(self.image_view_model.zoom_out)
         toolbar.addAction(zoom_out_action)
         
         toolbar.addSeparator()
@@ -210,6 +230,14 @@ class MainWindow(QMainWindow):
         if folder_path:
             self.main_view_model.load_folder(folder_path)
     
+    def _open_file_dialog(self):
+        """ファイル選択ダイアログを開く"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "ファイルを開く", "", "画像と動画 (*.jpg *.png *.jpeg *.gif *.bmp *.webp *.mp4 *.avi *.mov)"
+        )
+        if file_path:
+            self.open_file(file_path)
+    
     def _update_folder_path(self, folder_path: str):
         """フォルダパスを更新する"""
         self.setWindowTitle(f"画像ビューワー - {folder_path}")
@@ -240,3 +268,38 @@ class MainWindow(QMainWindow):
         """分類完了時の処理"""
         self.statusBar().showMessage("分類完了")
         self.classify_button.setEnabled(True)
+    
+    def _rotate_by_angle(self):
+        """角度を指定して回転"""
+        angle, ok = QInputDialog.getInt(self, "回転角度", "回転角度を入力してください:", 0, -360, 360, 1)
+        if ok:
+            self.image_view_model.rotate(angle)
+    
+    def _toggle_fullscreen(self):
+        """全画面表示を切り替える"""
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+    
+    def _toggle_fit_to_window(self, checked: bool):
+        """フィット表示を切り替える"""
+        self.image_view.set_fit_to_window(checked)
+        
+    def open_file(self, file_path: str):
+        """ファイルを開く"""
+        if not file_path:
+            return
+        
+        # ファイル拡張子を取得
+        ext = os.path.splitext(file_path)[1].lower()
+        
+        # 画像または動画として処理
+        if ext in ['.jpg', '.png', '.jpeg', '.gif', '.bmp', '.webp', '.mp4', '.avi', '.mov']:
+            # Imageオブジェクトを作成
+            image = Image(id=file_path, path=file_path, is_video=ext in ['.mp4', '.avi', '.mov'])
+            
+            # 画像を選択
+            self.main_view_model.select_image(image)
+        else:
+            self._show_error("サポートされていないファイル形式です")

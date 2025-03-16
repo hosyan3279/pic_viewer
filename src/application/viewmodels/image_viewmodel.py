@@ -67,6 +67,11 @@ class ImageViewModel:
         self.rotation = (self.rotation - 90) % 360
         self.on_rotation_changed.emit(self.rotation)
     
+    def rotate(self, angle: int):
+        """角度を指定して回転"""
+        self.rotation = (self.rotation + angle) % 360
+        self.on_rotation_changed.emit(self.rotation)
+    
     def reset_view(self):
         """表示をリセット"""
         self.zoom_level = 1.0
