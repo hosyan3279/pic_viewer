@@ -45,11 +45,17 @@ class ImageViewWidget(QScrollArea):
         self.current_pixmap = None
         self.zoom_level = 1.0
         self.rotation = 0
+        self.flip_horizontal_flag = False
+        self.flip_vertical_flag = False
         self.fit_to_window = True
+        self.current_image = None
         self.current_image = None
     
     def set_image(self, image: Image):
         """画像を設定する"""
+        if not image:
+            return
+        
         self.current_image = image
         
         # ファイル拡張子を取得
@@ -101,8 +107,19 @@ class ImageViewWidget(QScrollArea):
         if self.current_pixmap is None:
             return
         
+        # Transform初期化
+        transform = QTransform()
+        
+        # 水平反転
+        if self.flip_horizontal_flag:
+            transform.scale(-1, 1)
+        
+        # 垂直反転
+        if self.flip_vertical_flag:
+            transform.scale(1, -1)
+        
         # 回転
-        transform = QTransform().rotate(self.rotation)
+        transform.rotate(self.rotation)
         
         rotated_pixmap = self.current_pixmap.transformed(transform)
         
@@ -114,11 +131,10 @@ class ImageViewWidget(QScrollArea):
         if self.fit_to_window:
             w = self.width()
             h = self.height()
-        
         # 表示
         # 高解像度画像の効率的な表示のために、画像のサイズを変更する
-        max_width = 1920  # 最大幅
-        max_height = 1080  # 最大高さ
+        max_width = self.width()  # 最大幅
+        max_height = self.height()  # 最大高さ
         if w > max_width or h > max_height:
             w = min(w, max_width)
             h = min(h, max_height)

@@ -26,13 +26,13 @@ class ClassifyImageUseCase:
         existing_classification = self.classification_repository.get_by_image_id(image_id)
         if existing_classification:
             return existing_classification
-        
+        # 分類器を作成
+        classifier = ImageClassificationService.create_classifier(classifier_type)
+
         # 分類実行
-        classification = self.classification_service.classify_is_nsfw(
-            image, classifier_type
-        )
-        
+        classification = classifier.classify_is_nsfw(image)
+
         # 結果を保存
         saved_classification = self.classification_repository.save(classification)
-        
+
         return saved_classification

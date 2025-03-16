@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QSplitter, QMessageBox,
-    QFileDialog, QPushButton, QInputDialog
+    QFileDialog, QPushButton, QInputDialog, QStyle, QApplication, QComboBox
 )
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt
@@ -30,6 +30,47 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("画像ビューワー")
         self.resize(1200, 800)
         
+        # スタイルシートの設定
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f0f0f0;
+            }
+            QToolBar {
+                background-color: #e0e0e0;
+                border: none;
+            }
+            QMenuBar {
+                background-color: #e0e0e0;
+            }
+            QMenuBar::item {
+                background-color: transparent;
+            }
+            QMenuBar::item:selected {
+                background-color: #d0d0d0;
+            }
+            QSplitter::handle {
+                background-color: #c0c0c0;
+            }
+            QPushButton {
+                background-color: #4CAF50;
+                border: none;
+                color: white;
+                padding: 5px 10px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 14px;
+                margin: 4px 2px;
+                cursor: pointer;
+            }
+            QPushButton:hover {
+                background-color: #367C39;
+            }
+            QMessageBox {
+                background-color: #ffffff;
+            }
+        """)
+        
         self._setup_ui()
         self._setup_menu_bar()
         self._setup_tool_bar()
@@ -42,11 +83,16 @@ class MainWindow(QMainWindow):
         self.image_list = ImageListWidget()
         self.image_view = ImageViewWidget()
         self.classification_widget = ClassificationWidget()
-        
+
+        # 分類器選択コンボボックス
+        self.classifier_combo = QComboBox()
+        self.classifier_combo.addItem("NudeNet", "nudenet")
+        self.classifier_combo.addItem("Simple", "simple")
+
         # 分類ボタン
         self.classify_button = QPushButton("画像を分類")
         self.classify_button.clicked.connect(self._classify_current_image)
-        
+
         # レイアウトのセットアップ
         # 左側（フォルダツリーとイメージリスト）
         left_panel = QWidget()
@@ -64,6 +110,7 @@ class MainWindow(QMainWindow):
         # 分類パネル
         classification_panel = QWidget()
         classification_layout = QVBoxLayout(classification_panel)
+        classification_layout.addWidget(self.classifier_combo)
         classification_layout.addWidget(self.classification_widget)
         classification_layout.addWidget(self.classify_button)
         right_layout.addWidget(classification_panel)
@@ -123,6 +170,16 @@ class MainWindow(QMainWindow):
         rotate_ccw_action.triggered.connect(self.image_view_model.rotate_counterclockwise)
         view_menu.addAction(rotate_ccw_action)
         
+        # 水平反転のアクションを追加
+        flip_horizontal_action = QAction("水平反転", self)
+        flip_horizontal_action.triggered.connect(self.image_view_model.flip_horizontal)
+        view_menu.addAction(flip_horizontal_action)
+        
+        # 垂直反転のアクションを追加
+        flip_vertical_action = QAction("垂直反転", self)
+        flip_vertical_action.triggered.connect(self.image_view_model.flip_vertical)
+        view_menu.addAction(flip_vertical_action)
+
         # 任意角度回転のアクションを追加
         rotate_angle_action = QAction("角度を指定して回転", self)
         rotate_angle_action.triggered.connect(self._rotate_by_angle)
@@ -188,6 +245,16 @@ class MainWindow(QMainWindow):
         rotate_ccw_action = QAction(QIcon.fromTheme("object-rotate-left"), "反時計回りに回転", self)
         rotate_ccw_action.triggered.connect(self.image_view_model.rotate_counterclockwise)
         toolbar.addAction(rotate_ccw_action)
+        
+        # 水平反転
+        flip_horizontal_action = QAction(QIcon.fromTheme("object-flip-horizontal"), "水平反転", self)
+        flip_horizontal_action.triggered.connect(self.image_view_model.flip_horizontal)
+        toolbar.addAction(flip_horizontal_action)
+
+        # 垂直反転
+        flip_vertical_action = QAction(QIcon.fromTheme("object-flip-vertical"), "垂直反転", self)
+        flip_vertical_action.triggered.connect(self.image_view_model.flip_vertical)
+        toolbar.addAction(flip_vertical_action)
         
         toolbar.addSeparator()
         
@@ -255,10 +322,12 @@ class MainWindow(QMainWindow):
         if not self.main_view_model.current_image:
             self._show_error("分類する画像が選択されていません")
             return
-        
+        # 分類器のタイプを取得
+        classifier_type = self.classifier_combo.currentData()
+
         # 分類実行
-        self.classification_view_model.classify_image(self.main_view_model.current_image.id)
-    
+        self.classification_view_model.classify_image(self.main_view_model.current_image.id, classifier_type)
+
     def _classification_started(self, image_id: str):
         """分類開始時の処理"""
         self.statusBar().showMessage("画像を分類中...")
@@ -295,7 +364,7 @@ class MainWindow(QMainWindow):
         ext = os.path.splitext(file_path)[1].lower()
         
         # 画像または動画として処理
-        if ext in ['.jpg', '.png', '.jpeg', '.gif', '.bmp', '.webp', '.mp4', '.avi', '.mov']:
+        if ext in ['.jpg', '.png', '.jpeg', '.gif', '.bmp', '.webp *.mp4', '.avi', '.mov']:
             # Imageオブジェクトを作成
             image = Image(id=file_path, path=file_path, is_video=ext in ['.mp4', '.avi', '.mov'])
             

@@ -12,6 +12,8 @@ class ImageViewModel:
         self.current_image = None
         self.zoom_level = 1.0
         self.rotation = 0
+        self.flip_horizontal_flag = False
+        self.flip_vertical_flag = False
         
         # シグナル
         self.on_image_loaded = Signal()
@@ -67,6 +69,16 @@ class ImageViewModel:
         self.rotation = (self.rotation - 90) % 360
         self.on_rotation_changed.emit(self.rotation)
     
+    def flip_horizontal(self):
+        """水平方向に反転"""
+        self.flip_horizontal_flag = not self.flip_horizontal_flag
+        self.on_rotation_changed.emit(self.rotation)
+
+    def flip_vertical(self):
+        """垂直方向に反転"""
+        self.flip_vertical_flag = not self.flip_vertical_flag
+        self.on_rotation_changed.emit(self.rotation)
+
     def rotate(self, angle: int):
         """角度を指定して回転"""
         self.rotation = (self.rotation + angle) % 360
@@ -76,5 +88,7 @@ class ImageViewModel:
         """表示をリセット"""
         self.zoom_level = 1.0
         self.rotation = 0
+        self.flip_horizontal_flag = False
+        self.flip_vertical_flag = False
         self.on_zoom_changed.emit(self.zoom_level)
         self.on_rotation_changed.emit(self.rotation)
